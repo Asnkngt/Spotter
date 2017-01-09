@@ -183,6 +183,7 @@ public class CameraActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             Toast.makeText(getApplicationContext(),"Loading Recognization Finished",Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "run: Loading Recognization Finished");
                         }
                     });
                 }

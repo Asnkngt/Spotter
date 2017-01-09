@@ -177,8 +177,8 @@ public class ImageStorage {
         }
         bb.rewind();
         bb.get(out);
-        groupDatabase.execSQL("UPDATE "+GroupDataBase.TABLE_NAME+" SET "+GroupDataBase.BLOB_DATA +"= ?"+
-                " WHERE "+GroupDataBase.PERSON_NAME+" ='"+name+"', "+GroupDataBase.BOOLEAN_CHECK+"=1",new Object[]{out});
+        groupDatabase.execSQL("UPDATE "+GroupDataBase.TABLE_NAME+" SET "+GroupDataBase.BLOB_DATA +"= ?"+", "+GroupDataBase.BOOLEAN_CHECK+"='1'"+
+                " WHERE "+GroupDataBase.PERSON_NAME+" ='"+name+"'",new Object[]{out});
     }
 
     //person database
