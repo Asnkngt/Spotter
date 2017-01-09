@@ -2,6 +2,7 @@ package com.example.chanch.spotter;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -161,17 +162,17 @@ public class CameraActivity extends AppCompatActivity {
         singleFaceDetector=new FaceDetector.Builder(getApplicationContext())
                 .setTrackingEnabled(false)
                 .setProminentFaceOnly(true)
-                .setMode(FaceDetector.ACCURATE_MODE)
+                .setMode(FaceDetector.FAST_MODE)
                 .setLandmarkType(FaceDetector.ALL_LANDMARKS)
-                .setMinFaceSize(0.75f)
+                .setMinFaceSize(0.5f)
                 .build();
 
         if(MainActivity.MODE==MainActivity.MODE_REC){
             multiFaceDetector=new FaceDetector.Builder(getApplicationContext())
-                    .setMode(FaceDetector.ACCURATE_MODE)
+                    .setMode(FaceDetector.FAST_MODE)
                     .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                     .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
-                    .setMinFaceSize(0.1f)
+                    .setMinFaceSize(0.2f)
                     .build();
 
             final Handler handler=new Handler();
@@ -215,7 +216,7 @@ public class CameraActivity extends AppCompatActivity {
                 connectCamera();
             }
         });
-        options.inPreferredConfig= Bitmap.Config.RGB_565;
+        options.inPreferredConfig= Bitmap.Config.ARGB_8888;
     }
 
     @Override
@@ -494,6 +495,7 @@ public class CameraActivity extends AppCompatActivity {
         }
     };
 
+    private static int runs=0;
 
     //All of the image processing goes here
     private class ImageSaver implements Runnable{
@@ -536,45 +538,50 @@ public class CameraActivity extends AppCompatActivity {
                 case MainActivity.MODE_IMAGE:
                     Frame frame=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(tempFile.getAbsolutePath(),options)).build();
                     SparseArray<Face> faces= singleFaceDetector.detect(frame);
-
+                    Log.d(TAG, "run: "+faces.size());
                     if(faces.size()==1){
                         if(faces.get(0)==null){
                             tempFile.delete();
+                            runs++;
                             break;
                         }
                         if(Math.abs(faces.get(0).getEulerY())<10.0f && Math.abs(faces.get(0).getEulerZ())<5.0f &&
                                 recognitionHelper.checkKeyComponents(faces.get(0))) {
 
-
-                            Toast.makeText(getApplicationContext(), "Found A Face. Image Saved", Toast.LENGTH_SHORT).show();
+                            makeToast("Found A Face. Image Saved");
                             ImageStorage.AddImage(GroupAndNameListActivity.person,mImageName);
                         }
                         else{
-                            Toast.makeText(getApplicationContext(), "Found A Face. Incorrect Rotations. Image Not Saved", Toast.LENGTH_SHORT).show();
+                            makeToast("Found A Face. Incorrect Rotations. Image Not Saved");
                             tempFile.delete();
                         }
                     }else{
-                        Toast.makeText(getApplicationContext(),"Cannot Find Any Faces",Toast.LENGTH_SHORT).show();
+                        makeToast("Cannot Find Any Faces");
                         tempFile.delete();
                     }
                     break;
                 case MainActivity.MODE_REC:
+                    Log.d(TAG, "run: "+multiFaceDetector.isOperational());
+
                     if(!recognitionHelper.RecLoaded){
-                        Toast.makeText(getApplicationContext(),"Recognition Not Loaded Yet",Toast.LENGTH_SHORT).show();
+                        makeToast("Recognition Not Loaded Yet");
                         tempFile.delete();
                         return;
                     }
                     Frame frame2=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(tempFile.getAbsolutePath(),options)).build();
                     SparseArray<Face> faces2= multiFaceDetector.detect(frame2);
-                    Toast.makeText(getApplicationContext(),"Face Count:"+faces2.size(),Toast.LENGTH_SHORT).show();
+                    makeToast("Face Count:"+faces2.size());
                     for (int i=0;i<faces2.size();i++){
                         Face f=faces2.get(i);
                         if(f==null){
+                            runs++;
+                            makeToast("Face is Null");
                             Log.d(TAG, "run: Face is null");
                             continue;
                         }
+                        boolean check=recognitionHelper.checkKeyComponents(f);
                         if(Math.abs(f.getEulerY())<15.0f && Math.abs(f.getEulerZ())<20.0f &&
-                                recognitionHelper.checkKeyComponents(f)) {
+                                check) {
                             float[] tempFloatArray=recognitionHelper.getLandmarkData(f);
 
                             float error=100.0f;
@@ -592,17 +599,29 @@ public class CameraActivity extends AppCompatActivity {
                                     name=recognitionHelper.namesList.get(j);
                                 }
                             }
-                            Toast.makeText(getApplicationContext(),"Most likely:"+name+" with Error:"+error,Toast.LENGTH_SHORT).show();
+                            makeToast("Most likely:"+name+" with Error:"+error);
+                        }
+                        else if(!check){
+                            //makeToast("Can't detect landmarks properly");
+                            //Log.d(TAG, "run: missing landmarks");
                         }
                         else{
+                            makeToast("Can't detect face properly");
                             Log.d(TAG, "run: wrong orientation");
                         }
-                        if(!recognitionHelper.checkKeyComponents(f)){
-                            Log.d(TAG, "run: missing landmarks");
-                        }
+
                     }
                     tempFile.delete();
                     break;
+            }
+            Log.d(TAG, "run: running count:"+runs );
+            if(runs>3) {
+                runs=0;
+                Log.d(TAG, "run: running the restart thingy");
+                Intent i = getBaseContext().getPackageManager()
+                        .getLaunchIntentForPackage(getBaseContext().getPackageName());
+                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(i);
             }
         }
     }
@@ -667,6 +686,16 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
+    private Toast previousToast;
+    public void makeToast(String out){
+        if(previousToast!=null) {
+            previousToast.cancel();
+        }
+
+        previousToast=Toast.makeText(getApplicationContext(),out,Toast.LENGTH_SHORT);
+        previousToast.show();
+    }
+
 
     private class RecognitionHelper{
         public boolean RecLoaded =false;
@@ -706,7 +735,6 @@ public class CameraActivity extends AppCompatActivity {
                             Frame frame = new Frame.Builder().setBitmap(BitmapFactory.decodeFile(id)).build();
                             Face f = singleFaceDetector.detect(frame).get(0);
                             float[] tempFloatArray=getLandmarkData(f);
-
                             tempList.add(tempFloatArray);
                             for (int x = 0; x < 10; x++) {
                                 output[x] += tempFloatArray[x];
