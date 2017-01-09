@@ -145,6 +145,7 @@ public class CameraActivity extends AppCompatActivity {
     private FaceDetector multiFaceDetector;
 
     private RecognitionHelper recognitionHelper;
+    private BitmapFactory.Options options=new BitmapFactory.Options();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -214,6 +215,7 @@ public class CameraActivity extends AppCompatActivity {
                 connectCamera();
             }
         });
+        options.inPreferredConfig= Bitmap.Config.RGB_565;
     }
 
     @Override
@@ -248,7 +250,7 @@ public class CameraActivity extends AppCompatActivity {
                     .setMode(FaceDetector.ACCURATE_MODE)
                     .setLandmarkType(FaceDetector.ALL_LANDMARKS)
                     .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
-                    .setMinFaceSize(0.1f)
+                    .setMinFaceSize(0.2f)
                     .build();
         }
 
@@ -501,7 +503,6 @@ public class CameraActivity extends AppCompatActivity {
             mImage=image;
         }
 
-        @Override
         public void run(){
             File tempFile=null;
             try {
@@ -533,10 +534,14 @@ public class CameraActivity extends AppCompatActivity {
 
             switch (MainActivity.MODE) {
                 case MainActivity.MODE_IMAGE:
-                    Frame frame=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(mImageName)).build();
+                    Frame frame=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(tempFile.getAbsolutePath(),options)).build();
                     SparseArray<Face> faces= singleFaceDetector.detect(frame);
 
                     if(faces.size()==1){
+                        if(faces.get(0)==null){
+                            tempFile.delete();
+                            break;
+                        }
                         if(Math.abs(faces.get(0).getEulerY())<10.0f && Math.abs(faces.get(0).getEulerZ())<5.0f &&
                                 recognitionHelper.checkKeyComponents(faces.get(0))) {
 
@@ -559,10 +564,43 @@ public class CameraActivity extends AppCompatActivity {
                         tempFile.delete();
                         return;
                     }
-                    Frame frame2=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(mImageName)).build();
+                    Frame frame2=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(tempFile.getAbsolutePath(),options)).build();
                     SparseArray<Face> faces2= multiFaceDetector.detect(frame2);
                     Toast.makeText(getApplicationContext(),"Face Count:"+faces2.size(),Toast.LENGTH_SHORT).show();
+                    for (int i=0;i<faces2.size();i++){
+                        Face f=faces2.get(i);
+                        if(f==null){
+                            Log.d(TAG, "run: Face is null");
+                            continue;
+                        }
+                        if(Math.abs(f.getEulerY())<15.0f && Math.abs(f.getEulerZ())<20.0f &&
+                                recognitionHelper.checkKeyComponents(f)) {
+                            float[] tempFloatArray=recognitionHelper.getLandmarkData(f);
 
+                            float error=100.0f;
+                            String name="";
+
+                            for(int j=0;j<recognitionHelper.distancesList.size();j++){
+                                float[] distances=recognitionHelper.distancesList.get(j);
+                                float tempError=0.0f;
+                                for(int k=0;k<10;k++){
+                                    tempError+=Math.abs((tempFloatArray[k]-distances[k])/distances[k+10]);
+                                }
+                                tempError/=10.0f;
+                                if(tempError<error){
+                                    error=tempError;
+                                    name=recognitionHelper.namesList.get(j);
+                                }
+                            }
+                            Toast.makeText(getApplicationContext(),"Most likely:"+name+" with Error:"+error,Toast.LENGTH_SHORT).show();
+                        }
+                        else{
+                            Log.d(TAG, "run: wrong orientation");
+                        }
+                        if(!recognitionHelper.checkKeyComponents(f)){
+                            Log.d(TAG, "run: missing landmarks");
+                        }
+                    }
                     tempFile.delete();
                     break;
             }
@@ -644,17 +682,19 @@ public class CameraActivity extends AppCompatActivity {
                     countWrong++;
                 }
             }
-            return (marks.size() - countWrong) == 8;
+            return (marks.size() - countWrong) >= 8;
         }
 
         public void LoadGroup(){
             ImageStorage.GetNamesFromGroup(GroupAndNameListActivity.group);
             String[] names = ImageStorage.tempNameList;
             Boolean[] check=ImageStorage.tempBooleanList;
+            Log.d(TAG, "LoadGroup: "+names.length);
             for(int a=0;a<names.length;a++){
                 if(check[a]){
                     distancesList.add(ImageStorage.getBlobData(names[a]));
                     namesList.add(names[a]);
+                    Log.d(TAG, "LoadGroup: "+names[a]);
                 }
                 else {
                     ArrayList<float[]> tempList=new ArrayList<float[]>();
@@ -662,44 +702,11 @@ public class CameraActivity extends AppCompatActivity {
                     String[] ids = ImageStorage.GetIDsFromName(names[a]);
                     float[] output = new float[20];//10 distances 10 deviations
                     for (String id : ids) {
-                        Landmark[] marks=new Landmark[8];
                         try {
                             Frame frame = new Frame.Builder().setBitmap(BitmapFactory.decodeFile(id)).build();
                             Face f = singleFaceDetector.detect(frame).get(0);
-                            for (Landmark landmark : f.getLandmarks()) {
-                                int i = -1;
-                                switch (landmark.getType()) {
-                                    case Landmark.LEFT_EYE:
-                                        i = 0;
-                                        break;
-                                    case Landmark.RIGHT_EYE:
-                                        i = 1;
-                                        break;
-                                    case Landmark.LEFT_CHEEK:
-                                        i = 2;
-                                        break;
-                                    case Landmark.RIGHT_CHEEK:
-                                        i = 3;
-                                        break;
-                                    case Landmark.LEFT_MOUTH:
-                                        i = 4;
-                                        break;
-                                    case Landmark.RIGHT_MOUTH:
-                                        i = 5;
-                                        break;
-                                    case Landmark.NOSE_BASE:
-                                        i = 6;
-                                        break;
-                                    case Landmark.BOTTOM_MOUTH:
-                                        i = 7;
-                                        break;
-                                }
-                                if (i == -1) {
-                                } else {
-                                    marks[i] = landmark;
-                                }
-                            }
-                            float[] tempFloatArray = getAllDistances(marks);
+                            float[] tempFloatArray=getLandmarkData(f);
+
                             tempList.add(tempFloatArray);
                             for (int x = 0; x < 10; x++) {
                                 output[x] += tempFloatArray[x];
@@ -727,6 +734,44 @@ public class CameraActivity extends AppCompatActivity {
                 }
             }
             RecLoaded=true;
+        }
+
+        public float[] getLandmarkData(Face f){
+            Landmark[] marks =new Landmark[8];
+            for (Landmark landmark : f.getLandmarks()) {
+                int i = -1;
+                switch (landmark.getType()) {
+                    case Landmark.LEFT_EYE:
+                        i = 0;
+                        break;
+                    case Landmark.RIGHT_EYE:
+                        i = 1;
+                        break;
+                    case Landmark.LEFT_CHEEK:
+                        i = 2;
+                        break;
+                    case Landmark.RIGHT_CHEEK:
+                        i = 3;
+                        break;
+                    case Landmark.LEFT_MOUTH:
+                        i = 4;
+                        break;
+                    case Landmark.RIGHT_MOUTH:
+                        i = 5;
+                        break;
+                    case Landmark.NOSE_BASE:
+                        i = 6;
+                        break;
+                    case Landmark.BOTTOM_MOUTH:
+                        i = 7;
+                        break;
+                }
+                if (i == -1) {
+                } else {
+                    marks[i] = landmark;
+                }
+            }
+            return getAllDistances(marks);
         }
 
         private float[] getAllDistances(Landmark[] sortedLandmarks){
