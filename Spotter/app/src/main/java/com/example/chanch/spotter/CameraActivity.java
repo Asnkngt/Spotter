@@ -34,6 +34,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
@@ -48,6 +49,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.jar.Attributes;
 
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
@@ -140,6 +142,8 @@ public class CameraActivity extends AppCompatActivity {
     private ImageButton mChangeCameraButton;
     //private OpenCVHelper helper = new OpenCVHelper();
 
+    private Button mCompletionButton;
+
     private static String TAG="Something";
 
     private FaceDetector singleFaceDetector;
@@ -147,6 +151,8 @@ public class CameraActivity extends AppCompatActivity {
 
     private RecognitionHelper recognitionHelper;
     private BitmapFactory.Options options=new BitmapFactory.Options();
+
+    private static NameAndError FINAL_LIST;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -167,14 +173,39 @@ public class CameraActivity extends AppCompatActivity {
                 .setMinFaceSize(0.5f)
                 .build();
 
-        if(MainActivity.MODE==MainActivity.MODE_REC){
-            multiFaceDetector=new FaceDetector.Builder(getApplicationContext())
-                    .setMode(FaceDetector.FAST_MODE)
-                    .setLandmarkType(FaceDetector.ALL_LANDMARKS)
-                    .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
-                    .setMinFaceSize(0.2f)
-                    .build();
+        mCompletionButton=(Button)findViewById(R.id.CAMERA_completed);
+        mCompletionButton.setEnabled(false);
+        mCompletionButton.setVisibility(View.GONE);
 
+        if(MainActivity.MODE==MainActivity.MODE_REC){
+            FINAL_LIST=new NameAndError();
+
+            mCompletionButton.setEnabled(true);
+            mCompletionButton.setVisibility(View.VISIBLE);
+            mCompletionButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    String[] out=FINAL_LIST.GetString(1.0f,2.0f,4.0f);
+                    makeToast(out[0]+"\n\n"+out[1]+"\n\n"+out[2]+"\n\n"+out[3]);
+                }
+            });
+            if(multiFaceDetector!=null) {
+                if (!multiFaceDetector.isOperational()) {
+                    multiFaceDetector = new FaceDetector.Builder(getApplicationContext())
+                            .setMode(FaceDetector.FAST_MODE)
+                            .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                            .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
+                            .setMinFaceSize(0.2f)
+                            .build();
+                }
+            }else{
+                multiFaceDetector = new FaceDetector.Builder(getApplicationContext())
+                        .setMode(FaceDetector.FAST_MODE)
+                        .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                        .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
+                        .setMinFaceSize(0.2f)
+                        .build();
+            }
             final Handler handler=new Handler();
 
             new Thread(new Runnable() {
@@ -277,6 +308,9 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         ImageStorage.Close(this.getBaseContext());
+        if(MainActivity.MODE==MainActivity.MODE_REC) {
+            FINAL_LIST.refresh();
+        }
         super.onDestroy();
     }
 
@@ -561,8 +595,6 @@ public class CameraActivity extends AppCompatActivity {
                     }
                     break;
                 case MainActivity.MODE_REC:
-                    Log.d(TAG, "run: "+multiFaceDetector.isOperational());
-
                     if(!recognitionHelper.RecLoaded){
                         makeToast("Recognition Not Loaded Yet");
                         tempFile.delete();
@@ -599,6 +631,7 @@ public class CameraActivity extends AppCompatActivity {
                                 }
                             }
                             makeToast("Most likely:"+name+" with Error:"+error);
+                            FINAL_LIST.add(name,error);
                         }
                         else if(!check){
                             //makeToast("Can't detect landmarks properly");
@@ -608,19 +641,36 @@ public class CameraActivity extends AppCompatActivity {
                             makeToast("Can't detect face properly");
                             Log.d(TAG, "run: wrong orientation");
                         }
-
                     }
-                    tempFile.delete();
+                    //tempFile.delete();
+
+
                     break;
             }
             Log.d(TAG, "run: running count:"+runs );
             if(runs>3) {
                 runs=0;
                 Log.d(TAG, "run: running the restart thingy");
+                //finish();
+                finishAffinity();
+                //System.exit(0);
+                /*
+                multiFaceDetector.release();
+                multiFaceDetector=null;
+                System.gc();
+                multiFaceDetector=new FaceDetector.Builder(getApplicationContext())
+                        .setMode(FaceDetector.FAST_MODE)
+                        .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                        .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
+                        .setMinFaceSize(0.2f)
+                        .build();
+                */
+                /*
                 Intent i = getBaseContext().getPackageManager()
                         .getLaunchIntentForPackage(getBaseContext().getPackageName());
                 i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(i);
+                */
             }
         }
     }
@@ -693,6 +743,51 @@ public class CameraActivity extends AppCompatActivity {
 
         previousToast=Toast.makeText(getApplicationContext(),out,Toast.LENGTH_SHORT);
         previousToast.show();
+    }
+
+    private class NameAndError{
+        private ArrayList<String> names;
+        private ArrayList<Float> errors;
+        public NameAndError(){
+            refresh();
+        }
+        public void refresh(){
+            names=new ArrayList<String>();
+            errors=new ArrayList<Float>();
+        }
+
+        public void add(String name,float error){
+            int i=-1;
+            for(int x=0;x<names.size();x++){
+                if(names.get(x).equals(name)){
+                    i=x;
+                }
+            }
+            if(i!=-1){
+                if(errors.get(i)>error) {
+                    errors.set(i, error);
+                }
+            }else {
+                names.add(name);
+                errors.add(error);
+            }
+        }
+
+        public String[] GetString(float high,float med,float low){
+            String outHigh="Highly Likely:\n";String outMed="Somewhat Likely:\n";String outLow="Unlikely:\n";String outNon="Not Here:\n";
+            for(int x=0;x<names.size();x++){
+                if(errors.get(x)<=high){
+                    outHigh+=names.get(x)+"\n";
+                }else if(errors.get(x)<=med){
+                    outMed+=names.get(x)+"\n";
+                }else if(errors.get(x)<=low){
+                    outLow+=names.get(x)+"\n";
+                }else{
+                    outNon+=names.get(x)+"\n";
+                }
+            }
+            return new String[]{outHigh,outMed,outLow,outNon};
+        }
     }
 
 
