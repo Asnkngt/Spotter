@@ -572,17 +572,16 @@ public class CameraActivity extends AppCompatActivity {
                     SparseArray<Face> faces2= multiFaceDetector.detect(frame2);
                     makeToast("Face Count:"+faces2.size());
                     for (int i=0;i<faces2.size();i++){
-                        Face f=faces2.get(i);
-                        if(f==null){
+                        if(faces2.get(i)==null){
                             runs++;
                             makeToast("Face is Null");
                             Log.d(TAG, "run: Face is null");
                             continue;
                         }
-                        boolean check=recognitionHelper.checkKeyComponents(f);
-                        if(Math.abs(f.getEulerY())<15.0f && Math.abs(f.getEulerZ())<20.0f &&
+                        boolean check=recognitionHelper.checkKeyComponents(faces2.get(i));
+                        if(Math.abs(faces2.get(i).getEulerY())<15.0f && Math.abs(faces2.get(i).getEulerZ())<20.0f &&
                                 check) {
-                            float[] tempFloatArray=recognitionHelper.getLandmarkData(f);
+                            float[] tempFloatArray=recognitionHelper.getLandmarkData(faces2.get(i));
 
                             float error=100.0f;
                             String name="";
