@@ -1,11 +1,14 @@
 package com.example.chanch.spotter;
 
+import android.graphics.Bitmap;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Toast;
 import android.content.Context;
 import android.widget.BaseAdapter;
@@ -13,32 +16,36 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.graphics.BitmapFactory;
 
+import java.util.ArrayList;
+
 public class GalleryActivity extends AppCompatActivity {
-    String[] names = ImageStorage.tempNameList;
-    private String[][] ids = new String[names.length][];
 
+    private String[] ids;
 
+    private BitmapFactory.Options options=new BitmapFactory.Options();
 
-    @Override
+    private LinearLayout imageViewer;
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gallery);
         ImageStorage.DatabaseConnector(getApplicationContext());
-        for(int a=0;a < names.length ;a++)
 
-        {
-            ids[a] = ImageStorage.GetIDsFromName(names[a]);
+        ids=ImageStorage.GetIDsFromName(GroupAndNameListActivity.person);
+
+        options.inPreferredConfig= Bitmap.Config.RGB_565;
+        //options.inJustDecodeBounds=true;
+        options.inSampleSize=8;
+
+        imageViewer=(LinearLayout)findViewById(R.id.GALLERY_ACTIVITY_ImageList);
+
+        for(String id:ids){
+            ImageView imageView = new ImageView(getApplicationContext());
+            imageView.setImageBitmap(BitmapFactory.decodeFile(id,options));
+
+            imageViewer.addView(imageView);
         }
-        GridView gridview = (GridView) findViewById(R.id.gridview);
-        gridview.setAdapter(new ImageAdapter(this));
 
-        gridview.setOnItemClickListener(new OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parent, View v,
-                                    int position, long id) {
-                Toast.makeText(GalleryActivity.this, "" + position,
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
 
@@ -51,11 +58,9 @@ public class GalleryActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    /*
     public class ImageAdapter extends BaseAdapter {
-
         private Context mContext;
-
-
 
         public ImageAdapter(Context c) {
             mContext = c;
@@ -87,9 +92,20 @@ public class GalleryActivity extends AppCompatActivity {
                 imageView = (ImageView) convertView;
             }
             for(int a = 0; a<ids.length; a++)
-                imageView.setImageBitmap(BitmapFactory.decodeFile(ids[a][position]));
+                imageView.setImageBitmap(BitmapFactory.decodeFile(ids[a],options));
 
             return imageView;
         }
     }
+*/
+    private Toast previousToast;
+    public void makeToast(String out){
+        if(previousToast!=null) {
+            previousToast.cancel();
+        }
+
+        previousToast=Toast.makeText(getApplicationContext(),out,Toast.LENGTH_SHORT);
+        previousToast.show();
+    }
+
 }

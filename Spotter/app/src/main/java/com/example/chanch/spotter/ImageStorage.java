@@ -217,7 +217,6 @@ public class ImageStorage {
     }
 
     public static String[] GetIDsFromName(String name){
-        //entire file path
         ArrayList<String> list=new ArrayList<String>();
         personDatabase=personDatabaseOpenHelper.getReadableDatabase();
         Cursor c=personDatabase.rawQuery("SELECT DISTINCT "+PersonDatabase.IMAGE_ID +" FROM "+PersonDatabase.TABLE_NAME+" WHERE "+PersonDatabase.PERSON_NAME+" ='"+name+"'",null);

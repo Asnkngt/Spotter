@@ -268,7 +268,7 @@ public class CameraActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         startBackgroundThread();
-
+        /*
         singleFaceDetector=new FaceDetector.Builder(getApplicationContext())
                 .setTrackingEnabled(false)
                 .setProminentFaceOnly(true)
@@ -285,7 +285,7 @@ public class CameraActivity extends AppCompatActivity {
                     .setMinFaceSize(0.2f)
                     .build();
         }
-
+        */
         if (mTextureView.isAvailable()) {
             setUpCamera(mTextureView.getWidth(), mTextureView.getHeight());
             connectCamera();
@@ -297,10 +297,12 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         closeCamera();
+        /*
         singleFaceDetector.release();
         if(multiFaceDetector!=null) {
             multiFaceDetector.release();
         }
+        */
         stopBackgroundThread();
         super.onPause();
     }
@@ -308,6 +310,12 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         ImageStorage.Close(this.getBaseContext());
+        singleFaceDetector.release();
+        singleFaceDetector=null;
+        if(multiFaceDetector!=null) {
+            multiFaceDetector.release();
+            multiFaceDetector=null;
+        }
         if(MainActivity.MODE==MainActivity.MODE_REC) {
             FINAL_LIST.refresh();
         }
@@ -642,9 +650,7 @@ public class CameraActivity extends AppCompatActivity {
                             Log.d(TAG, "run: wrong orientation");
                         }
                     }
-                    //tempFile.delete();
-
-
+                    tempFile.delete();
                     break;
             }
             Log.d(TAG, "run: running count:"+runs );

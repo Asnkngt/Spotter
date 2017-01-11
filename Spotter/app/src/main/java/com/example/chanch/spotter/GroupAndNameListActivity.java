@@ -159,8 +159,4 @@ public class GroupAndNameListActivity extends AppCompatActivity {
                 break;
         }
     }
-
-
-
-
 }
