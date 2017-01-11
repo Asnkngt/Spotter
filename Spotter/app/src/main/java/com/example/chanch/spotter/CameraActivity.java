@@ -584,6 +584,7 @@ public class CameraActivity extends AppCompatActivity {
                     if(faces.size()==1){
                         if(faces.get(0)==null){
                             tempFile.delete();
+                            makeToast("Face is Null. Face Detector may be malfunctioning. Please restart Applicaion");
                             runs++;
                             break;
                         }
@@ -614,7 +615,7 @@ public class CameraActivity extends AppCompatActivity {
                     for (int i=0;i<faces2.size();i++){
                         if(faces2.get(i)==null){
                             runs++;
-                            makeToast("Face is Null");
+                            makeToast("Face is Null. Face Detector may be malfunctioning. Please restart Applicaion");
                             Log.d(TAG, "run: Face is null");
                             continue;
                         }
@@ -658,7 +659,7 @@ public class CameraActivity extends AppCompatActivity {
                 runs=0;
                 Log.d(TAG, "run: running the restart thingy");
                 //finish();
-                finishAffinity();
+                //finishAffinity();
                 //System.exit(0);
                 /*
                 multiFaceDetector.release();

@@ -3,10 +3,12 @@ package com.example.chanch.spotter;
 import android.graphics.Bitmap;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Toast;
@@ -20,7 +22,11 @@ import java.util.ArrayList;
 
 public class GalleryActivity extends AppCompatActivity {
 
-    private String[] ids;
+    private static String TAG="GALLERY";
+
+    private String[] names;
+
+    private Context context;
 
     private BitmapFactory.Options options=new BitmapFactory.Options();
 
@@ -29,9 +35,12 @@ public class GalleryActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gallery);
+        context=getApplicationContext();
         ImageStorage.DatabaseConnector(getApplicationContext());
 
-        ids=ImageStorage.GetIDsFromName(GroupAndNameListActivity.person);
+        ImageStorage.GetNamesFromGroup(GroupAndNameListActivity.group);
+        names=ImageStorage.tempNameList;
+        //ids=ImageStorage.GetIDsFromName(GroupAndNameListActivity.person);
 
         options.inPreferredConfig= Bitmap.Config.RGB_565;
         //options.inJustDecodeBounds=true;
@@ -39,11 +48,27 @@ public class GalleryActivity extends AppCompatActivity {
 
         imageViewer=(LinearLayout)findViewById(R.id.GALLERY_ACTIVITY_ImageList);
 
-        for(String id:ids){
-            ImageView imageView = new ImageView(getApplicationContext());
-            imageView.setImageBitmap(BitmapFactory.decodeFile(id,options));
+        ViewGroup.LayoutParams layout=new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
 
-            imageViewer.addView(imageView);
+        for(String name:names) {
+            HorizontalScrollView scrollView=new HorizontalScrollView(context);
+            scrollView.setLayoutParams(layout);
+
+            LinearLayout list=new LinearLayout((context));
+            list.setOrientation(LinearLayout.HORIZONTAL);
+            list.setLayoutParams(layout);
+
+            scrollView.addView(list);
+
+            String[] ids=ImageStorage.GetIDsFromName(name);
+            for (String id : ids) {
+                ImageView imageView = new ImageView(context);
+                imageView.setImageBitmap(BitmapFactory.decodeFile(id, options));
+
+                list.addView(imageView);
+            }
+
+            imageViewer.addView(scrollView);
         }
 
     }

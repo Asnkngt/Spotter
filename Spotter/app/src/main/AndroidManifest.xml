@@ -26,8 +26,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".GroupAndNameListActivity" />
-        <activity android:name=".CameraActivity" />
-        <activity android:name=".GalleryActivity"></activity>
+        <activity android:name=".CameraActivity"
+            android:screenOrientation="portrait"/>
+        <activity android:name=".GalleryActivity"/>
     </application>
 
 </manifest>

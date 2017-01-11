@@ -97,7 +97,8 @@ public class GroupAndNameListActivity extends AppCompatActivity {
                 startActivity(new Intent(GroupAndNameListActivity.this,CameraActivity.class));
                 break;
             case MainActivity.MODE_GALLERY:
-                loadGroups2();
+                startActivity(new Intent(GroupAndNameListActivity.this, GalleryActivity.class));
+                //loadGroups2();
                 //load gallery based on group
                 break;
         }
@@ -154,8 +155,7 @@ public class GroupAndNameListActivity extends AppCompatActivity {
                 startActivity(new Intent(GroupAndNameListActivity.this, CameraActivity.class));
                 break;
             case MainActivity.MODE_GALLERY:
-
-                startActivity(new Intent(GroupAndNameListActivity.this, GalleryActivity.class));
+                //startActivity(new Intent(GroupAndNameListActivity.this, GalleryActivity.class));
                 break;
         }
     }
