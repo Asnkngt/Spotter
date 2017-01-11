@@ -3,7 +3,7 @@
     package="com.example.chanch.spotter">
 
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
@@ -22,7 +22,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".GroupAndNameListActivity" />
-        <activity android:name=".CameraActivity"></activity>
+        <activity android:name=".CameraActivity" />
+        <activity android:name=".GalleryActivity"></activity>
     </application>
 
 </manifest>

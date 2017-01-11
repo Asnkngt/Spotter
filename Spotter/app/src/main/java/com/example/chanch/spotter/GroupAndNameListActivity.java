@@ -22,6 +22,7 @@ public class GroupAndNameListActivity extends AppCompatActivity {
 
     public static String group;
     public static String person;
+    public static String id;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +30,7 @@ public class GroupAndNameListActivity extends AppCompatActivity {
         setContentView(R.layout.activity_group_and_name_list);
 
         ImageStorage.DatabaseConnector(getApplicationContext());
+        //can access all names
 
         words=(TextView)findViewById(R.id.GANL_ACTIVITY_textbox);
         name=(EditText)findViewById(R.id.GANL_ACTIVITY_nameBox);
@@ -57,6 +59,8 @@ public class GroupAndNameListActivity extends AppCompatActivity {
                 name.setText("");name.setEnabled(false);add.setEnabled(false);
                 name.setVisibility(View.GONE);add.setVisibility(View.GONE);
                 break;
+            //
+            //view images button, cgange to view all images of one person, show in grid.
         }
     }
 
@@ -93,6 +97,7 @@ public class GroupAndNameListActivity extends AppCompatActivity {
                 startActivity(new Intent(GroupAndNameListActivity.this,CameraActivity.class));
                 break;
             case MainActivity.MODE_GALLERY:
+                loadGroups2();
                 //load gallery based on group
                 break;
         }
@@ -103,14 +108,19 @@ public class GroupAndNameListActivity extends AppCompatActivity {
         ImageStorage.GetNamesFromGroup(group);
         String[] list=ImageStorage.tempNameList;
         //String[] list={"1","2","3","4","5","6","7","8","9","10","11","12"};
-        name.setText("New Person");add.setText("Add Name");
-        add.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                process2(name.getText().toString());
-            }
-        });
 
+        switch (MainActivity.MODE) {
+            case MainActivity.MODE_IMAGE:
+                name.setText("New Person");
+                add.setText("Add Name");
+                add.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                        process2(name.getText().toString());
+                        }
+                });
+                break;
+        }
         Log.d(TAG, "loadGroup 2");
         for(String s:list){
             Button b=new Button(this);
@@ -126,18 +136,31 @@ public class GroupAndNameListActivity extends AppCompatActivity {
     }
 
     private void process2(String s){
-        String[] list=ImageStorage.tempNameList;
-        //String[] list={"1","2","3","4","5","6","7","8","9","10","11","12"};
-        boolean tof=false;
-        for(String string:list){
-            if(s.equals(string)){
-                tof=true;
-            }
+        person = s;
+        switch (MainActivity.MODE){
+            case MainActivity.MODE_IMAGE:
+                String[] list = ImageStorage.tempNameList;
+                //String[] list={"1","2","3","4","5","6","7","8","9","10","11","12"};
+                boolean tof = false;
+                for (String string : list) {
+                    if (s.equals(string)) {
+                        tof = true;
+                    }
+                }
+                if (!tof) {
+                    ImageStorage.AddPersonIntoGroup(group, s);
+                }
+
+                startActivity(new Intent(GroupAndNameListActivity.this, CameraActivity.class));
+                break;
+            case MainActivity.MODE_GALLERY:
+
+                startActivity(new Intent(GroupAndNameListActivity.this, GalleryActivity.class));
+                break;
         }
-        if(!tof){
-            ImageStorage.AddPersonIntoGroup(group,s);
-        }
-        person=s;
-        startActivity(new Intent(GroupAndNameListActivity.this,CameraActivity.class));
     }
+
+
+
+
 }
