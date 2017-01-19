@@ -158,6 +158,8 @@ public class CameraActivity extends AppCompatActivity {
     private boolean lock=false;
     private boolean docLock=false;
 
+    private final float PASS_VALUE=2.75f;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -194,7 +196,7 @@ public class CameraActivity extends AppCompatActivity {
             mCompletionButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    String[] out=FINAL_LIST.GetString(2.25f,4.5f,6.75f);
+                    String[] out=FINAL_LIST.GetString(PASS_VALUE,2*PASS_VALUE,3*PASS_VALUE);
                     makeToast(out[0]+"\n\n"+out[1]+"\n\n"+out[2]+"\n\n"+out[3]);
                 }
             });
@@ -208,7 +210,7 @@ public class CameraActivity extends AppCompatActivity {
                         docLock=true;
                         try {
                             File output = createDocFileName();
-                            String[] out=FINAL_LIST.GetString(2.25f,4.5f,6.75f);
+                            String[] out=FINAL_LIST.GetString(PASS_VALUE,2*PASS_VALUE,3*PASS_VALUE);
                             String outString= myDocDate+"\nAttendence: \n\n"+out[0]+"\n\n"+out[1]+"\n\n"+out[2]+"\n\n"+out[3];
                             BufferedWriter writer=new BufferedWriter(new FileWriter(output.getAbsolutePath()));
                             writer.write(outString);
@@ -637,7 +639,7 @@ public class CameraActivity extends AppCompatActivity {
                             runs++;
                             break;
                         }
-                        if(Math.abs(faces.valueAt(0).getEulerY())<10.0f && Math.abs(faces.valueAt(0).getEulerZ())<5.0f &&
+                        if(Math.abs(faces.valueAt(0).getEulerY())<5.0f && Math.abs(faces.valueAt(0).getEulerZ())<5.0f &&
                                 recognitionHelper.checkKeyComponents(faces.valueAt(0))) {
 
                             makeToast("Found A Face. Image Saved");
@@ -660,7 +662,6 @@ public class CameraActivity extends AppCompatActivity {
                     }
                     Frame frame2=new Frame.Builder().setBitmap(BitmapFactory.decodeFile(tempFile.getAbsolutePath(),options)).build();
                     SparseArray<Face> faces2= multiFaceDetector.detect(frame2);
-                    makeToast("Face Count:"+faces2.size());
                     for (int i=0;i<faces2.size();i++){
                         if(faces2.valueAt(i)==null){
                             runs++;
@@ -669,7 +670,7 @@ public class CameraActivity extends AppCompatActivity {
                             continue;
                         }
                         boolean check=recognitionHelper.checkKeyComponents(faces2.valueAt(i));
-                        if(Math.abs(faces2.valueAt(i).getEulerY())<15.0f && Math.abs(faces2.valueAt(i).getEulerZ())<20.0f &&
+                        if(Math.abs(faces2.valueAt(i).getEulerY())<5.0f && Math.abs(faces2.valueAt(i).getEulerZ())<5.0f &&
                                 check) {
                             float[] tempFloatArray=recognitionHelper.getLandmarkData(faces2.valueAt(i));
                             float error=100.0f;
@@ -679,12 +680,12 @@ public class CameraActivity extends AppCompatActivity {
                                 float[] distances=recognitionHelper.distancesList.get(j);
                                 float tempError=0.0f;
                                 float tempAverageDeviation=0.0f;
-                                for(int k=0;k<10;k++){
-                                    float errorPercent=Math.abs((tempFloatArray[k]-distances[k])/distances[k+10]);
-                                    tempAverageDeviation+=distances[k+10];
+                                for(int k=0;k<tempFloatArray.length;k++){
+                                    float errorPercent=Math.abs((tempFloatArray[k]-distances[k])/distances[k+tempFloatArray.length]);
+                                    tempAverageDeviation+=distances[k+tempFloatArray.length];
                                     tempError+=(errorPercent*errorPercent);
                                 }
-                                tempError=((float) Math.sqrt(tempError/10.0f))*tempAverageDeviation*10;
+                                tempError=((float) Math.sqrt(tempError/tempFloatArray.length))*tempAverageDeviation*10.0f;
                                 if(tempError<error){
                                     error=tempError;
                                     name=recognitionHelper.namesList.get(j);
@@ -895,35 +896,41 @@ public class CameraActivity extends AppCompatActivity {
                 }
                 else {
                     ArrayList<float[]> tempList=new ArrayList<float[]>();
-                    int count = 0;
                     String[] ids = ImageStorage.GetIDsFromName(names[a]);
-                    float[] output = new float[20];//10 distances 10 deviations
                     for (String id : ids) {
                         try {
                             Frame frame = new Frame.Builder().setBitmap(BitmapFactory.decodeFile(id)).build();
                             Face f = singleFaceDetector.detect(frame).valueAt(0);
                             float[] tempFloatArray=getLandmarkData(f);
                             tempList.add(tempFloatArray);
-                            for (int x = 0; x < 10; x++) {
-                                output[x] += tempFloatArray[x];
-
-                            }
-                            count++;
                         } catch (Error e) {
                         }
                     }
                     //get all averages
-                    for (int x = 0; x < 10; x++) {
-                        output[x] /= count;
+                    int arrayLength=tempList.get(0).length;
+                    float[] output=new float[arrayLength*2];
+
+                    for(int i=0;i<arrayLength*2;i++){
+                        output[i]=0.0f;
+                    }
+
+                    for(float[] tempArray:tempList ){
+                        for(int i=0;i<arrayLength;i++){
+                            output[i]+=tempArray[i];
+                        }
+                    }
+
+                    for (int i = 0; i < arrayLength; i++) {
+                        output[i] /= tempList.size();
                     }
                     //use temp list to get standard deviation
-                    for (int x = 0; x < 10; x++) {
+                    for (int x = 0; x < arrayLength; x++) {
                         float sum=0;
                         for(int y=0;y<tempList.size();y++){
                             float tempSquareRoot= tempList.get(y)[x]-output[x];
                             sum+=(tempSquareRoot*tempSquareRoot);
                         }
-                        output[10+x]=(float)Math.sqrt(sum/tempList.size());
+                        output[arrayLength+x]=(float)Math.sqrt(sum/tempList.size());
                     }
                     ImageStorage.storeBlobData(names[a],output);
                     distancesList.add(output);
@@ -968,18 +975,42 @@ public class CameraActivity extends AppCompatActivity {
                     marks[i] = landmark;
                 }
             }
-            return getAllDistances(marks);
+            return getAllFaceValues(marks);
         }
 
-        private float[] getAllDistances(Landmark[] sortedLandmarks){
-            float normalizer=getDistance(sortedLandmarks[2],sortedLandmarks[3]);
-            return new float[]{
-                    getDistance(sortedLandmarks[0],sortedLandmarks[1])/normalizer, getDistance(sortedLandmarks[4],sortedLandmarks[5])/normalizer,
-                    getDistance(sortedLandmarks[0],sortedLandmarks[4])/normalizer, getDistance(sortedLandmarks[1],sortedLandmarks[5])/normalizer,
-                    getDistance(sortedLandmarks[4],sortedLandmarks[7])/normalizer, getDistance(sortedLandmarks[4],sortedLandmarks[6])/normalizer,
-                    getDistance(sortedLandmarks[5],sortedLandmarks[7])/normalizer, getDistance(sortedLandmarks[5],sortedLandmarks[6])/normalizer,
-                    getDistance(sortedLandmarks[2],sortedLandmarks[6])/normalizer, getDistance(sortedLandmarks[3],sortedLandmarks[6])/normalizer};
+        private float[] getAllFaceValues(Landmark[] sortedLandmarks){
+            float lengthNormalizer=getDistance(sortedLandmarks[2],sortedLandmarks[3]);
+            float angleNormalizer=getAngle(sortedLandmarks[0],sortedLandmarks[1],0.0f);
 
+            return new float[]{
+                    getDistance(sortedLandmarks[0],sortedLandmarks[1])/lengthNormalizer, getDistance(sortedLandmarks[4],sortedLandmarks[5])/lengthNormalizer,
+                    getDistance(sortedLandmarks[0],sortedLandmarks[4])/lengthNormalizer, getDistance(sortedLandmarks[1],sortedLandmarks[5])/lengthNormalizer,
+                    getDistance(sortedLandmarks[4],sortedLandmarks[7])/lengthNormalizer, getDistance(sortedLandmarks[4],sortedLandmarks[6])/lengthNormalizer,
+                    getDistance(sortedLandmarks[5],sortedLandmarks[7])/lengthNormalizer, getDistance(sortedLandmarks[5],sortedLandmarks[6])/lengthNormalizer,
+                    getDistance(sortedLandmarks[2],sortedLandmarks[6])/lengthNormalizer, getDistance(sortedLandmarks[3],sortedLandmarks[6])/lengthNormalizer,
+
+                    getDistance(sortedLandmarks[0],sortedLandmarks[2])/lengthNormalizer, getDistance(sortedLandmarks[1],sortedLandmarks[3])/lengthNormalizer,
+                    getDistance(sortedLandmarks[2],sortedLandmarks[4])/lengthNormalizer, getDistance(sortedLandmarks[3],sortedLandmarks[5])/lengthNormalizer,
+
+                    getAngle(sortedLandmarks[0],sortedLandmarks[1],angleNormalizer), getAngle(sortedLandmarks[4],sortedLandmarks[5],angleNormalizer),
+                    getAngle(sortedLandmarks[0],sortedLandmarks[4],angleNormalizer), getAngle(sortedLandmarks[1],sortedLandmarks[5],angleNormalizer),
+                    getAngle(sortedLandmarks[4],sortedLandmarks[7],angleNormalizer), getAngle(sortedLandmarks[4],sortedLandmarks[6],angleNormalizer),
+                    getAngle(sortedLandmarks[5],sortedLandmarks[7],angleNormalizer), getAngle(sortedLandmarks[5],sortedLandmarks[6],angleNormalizer),
+                    getAngle(sortedLandmarks[2],sortedLandmarks[6],angleNormalizer), getAngle(sortedLandmarks[3],sortedLandmarks[6],angleNormalizer),
+
+                    getAngle(sortedLandmarks[0],sortedLandmarks[2],angleNormalizer), getAngle(sortedLandmarks[1],sortedLandmarks[3],angleNormalizer),
+                    getAngle(sortedLandmarks[2],sortedLandmarks[4],angleNormalizer), getAngle(sortedLandmarks[3],sortedLandmarks[5],angleNormalizer)
+            };
+        }
+
+        private float getAngle(Landmark l1,Landmark l2,float normalizer){
+            float xLength=l1.getPosition().x-l2.getPosition().x;
+            float yLength=l1.getPosition().y-l2.getPosition().y;
+            try {
+                return (((float) Math.atan(yLength / xLength))-normalizer+(float)Math.PI)/((float)Math.PI*2.0f);
+            }catch (Error e){
+                return 0.5f-(normalizer/((float)Math.PI));
+            }
         }
 
         private float getDistance(Landmark l1,Landmark l2){
