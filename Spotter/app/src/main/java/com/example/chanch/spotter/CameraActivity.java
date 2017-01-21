@@ -589,6 +589,8 @@ public class CameraActivity extends AppCompatActivity {
 
     private static int runs=0;
 
+    private final static int BREAKS=2;
+
     //All of the image processing goes here
     private class ImageSaver implements Runnable{
         private final Image mImage;
@@ -680,10 +682,25 @@ public class CameraActivity extends AppCompatActivity {
                                 float[] distances=recognitionHelper.distancesList.get(j);
                                 float tempError=0.0f;
                                 float tempAverageDeviation=0.0f;
-                                for(int k=0;k<tempFloatArray.length;k++){
-                                    float errorPercent=Math.abs((tempFloatArray[k]-distances[k])/distances[k+tempFloatArray.length]);
-                                    tempAverageDeviation+=distances[k+tempFloatArray.length];
-                                    tempError+=(errorPercent*errorPercent);
+
+                                for(int k=0;k<BREAKS;k++) {
+                                    for (int l = tempFloatArray.length/BREAKS*k; l < tempFloatArray.length/BREAKS*(k+1); l++) {
+                                        switch (k) {
+                                            case 0:
+                                                float errorPercent1 = Math.abs((tempFloatArray[l] - distances[l]) / distances[l + tempFloatArray.length]);
+                                                tempAverageDeviation += distances[l + tempFloatArray.length];
+                                                tempError += (errorPercent1 * errorPercent1);
+                                                break;
+                                            case 1:
+                                                float errorPercent2 = Math.abs(tempFloatArray[l] - distances[l]);
+                                                while(errorPercent2>0.5f){
+                                                    errorPercent2-=0.5f;
+                                                }
+                                                errorPercent2/= distances[l + tempFloatArray.length];
+                                                tempError += (errorPercent2 * errorPercent2);
+                                                break;
+                                        }
+                                    }
                                 }
                                 tempError=((float) Math.sqrt(tempError/tempFloatArray.length))*tempAverageDeviation*10.0f;
                                 if(tempError<error){
@@ -1005,9 +1022,18 @@ public class CameraActivity extends AppCompatActivity {
 
         private float getAngle(Landmark l1,Landmark l2,float normalizer){
             float xLength=l1.getPosition().x-l2.getPosition().x;
-            float yLength=l1.getPosition().y-l2.getPosition().y;
+            //float yLength=l1.getPosition().y-l2.getPosition().y;
             try {
-                return (((float) Math.atan(yLength / xLength))-normalizer+(float)Math.PI)/((float)Math.PI*2.0f);
+                //return (((float) Math.acos(yLength / xLength))-normalizer+(float)Math.PI)/((float)Math.PI*2.0f);
+                float out=(float)((Math.acos(xLength/getDistance(l1,l2))/Math.PI)-normalizer);
+                while(out>1.0f){
+                    out-=1.0f;
+                }
+                while(out<0.0f){
+                    out+=1.0f;
+                }
+                //value will be between 0,1
+                return out;
             }catch (Error e){
                 return 0.5f-(normalizer/((float)Math.PI));
             }
